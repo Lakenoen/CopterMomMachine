@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "cmmLauncherConsole": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}

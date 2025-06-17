@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "mainModule": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}
