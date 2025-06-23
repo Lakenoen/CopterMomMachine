@@ -124,7 +124,7 @@ public class NativeLauncher : IDisposable
 
         }
         ReadPEFile();
-        byte[] key = Encoding.ASCII.GetBytes(ApiProvider.Instance.accessResp.access_token);
+        byte[] key = Encoding.ASCII.GetBytes(ApiProvider.Instance.decryptKey);
         byte[] decryptData = CryptoProvider.decrypt(key, this.fileData.ToArray());
         string errorMsg = "";
         Entry = init(id, decryptData, (ulong)this.fileData.Count,out errorMsg);

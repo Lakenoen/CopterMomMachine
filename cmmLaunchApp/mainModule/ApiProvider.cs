@@ -27,7 +27,7 @@ public class ApiProvider : IDisposable
     private string id = "";
     private readonly string reqId = "localhost:55080";
     private string verCode = "";
-    public TokenRespForJson? accessResp { get; private set; } = null;
+    public string decryptKey { get; private set; } = "";
 
     private const string servBaseAddr = "http://*:55080/";
     private const string redirectUri = "http://localhost:55080/";
@@ -50,44 +50,56 @@ public class ApiProvider : IDisposable
         client.Timeout = TimeSpan.FromSeconds(30);
         server.Prefixes.Add(servBaseAddr);
         server.Start();
-        register();
     }
 
     public async Task Listen()
     {
         isServerRun = true;
         await Task.Run(() => {
-            while (isServerRun)
-            {
-                HttpListenerContext ctx = server.GetContext();
-                HttpListenerRequest req = ctx.Request;
-                string? hostaddr = req.Headers["Host"];
+            HttpListenerContext ctx = server.GetContext();
+            HttpListenerRequest req = ctx.Request;
+            string? hostaddr = req.Headers["Host"];
 
-                if(req.Headers["Host"] == reqId)
-                {
-                    string? code = req.QueryString["code"];
-                    if (code == null)
-                        goto down;
-                    string body = $"grant_type=authorization_code" +
-                    $"&code={code}" +
-                    $"&redirect_uri={redirectUri}" +
-                    $"&code_vierfier={verCode}";
-                    var content = new StringContent(body, Encoding.UTF8, "application/x-www-form-urlencoded");
-                    HttpResponseMessage response = client.PostAsync("token", content).Result;
-                    response.EnsureSuccessStatusCode();
-                    string responseStr = response.Content.ReadAsStringAsync().Result;
-                    accessResp = JsonSerializer.Deserialize<TokenRespForJson>(responseStr, AppJsonContext.Default.TokenRespForJson);
-                }
-                down:
+            if (req.Headers["Host"] == reqId)
+            {
+                string? code = req.QueryString["code"];
+                if (code == null)
+                    goto down;
+                string body = $"grant_type=authorization_code" +
+                $"&code={code}" +
+                $"&redirect_uri={redirectUri}" +
+                $"&code_vierfier={verCode}" +
+                $"&client_id={this.id}";
+                var content = new StringContent(body, Encoding.UTF8, "application/x-www-form-urlencoded");
+                HttpResponseMessage response = client.PostAsync("token", content).Result;
+                response.EnsureSuccessStatusCode();
+                string responseStr = response.Content.ReadAsStringAsync().Result;
+                TokenRespForJson? accesTokenResp = JsonSerializer.Deserialize<TokenRespForJson>(responseStr, AppJsonContext.Default.TokenRespForJson);
+                if (accesTokenResp == null)
+                    throw new Exception("Token is null");
+
+                HttpRequestMessage reqGetKey = new HttpRequestMessage(HttpMethod.Get, client.BaseAddress + $"get_key?nonce={makeRandomString()}");
+                reqGetKey.Headers.Add("Authorization", " Bearer " + accesTokenResp.access_token);
+                response = client.SendAsync(reqGetKey).Result;
+                response.EnsureSuccessStatusCode();
+                responseStr = response.Content.ReadAsStringAsync().Result;
+                JsonObject? jobj = JsonObject.Parse(responseStr) as JsonObject;
+                if (jobj == null)
+                    throw new Exception("Maleformed response");
+                string? tempKey = jobj["key"]?.GetValue<string>();
+                if (tempKey == null)
+                    throw new Exception("Maleformed response");
+                this.decryptKey = tempKey;
+            }
+            down:
                 HttpListenerResponse resp = ctx.Response;
                 string data = "something...";
                 resp.ContentLength64 = data.Length;
                 resp.StatusCode = (int)HttpStatusCode.OK;
                 resp.StatusDescription = "Status OK";
                 resp.OutputStream.Write(Encoding.UTF8.GetBytes(data));
-                this.isServerRun = false; // Mb Fix That
-            }
         });
+        server.Stop();
     }
 
     private static string ReadFormData(HttpListenerRequest request)
@@ -98,11 +110,16 @@ public class ApiProvider : IDisposable
         }
     }
 
-    private void register()
+    public void fillID()
+    {
+        this.id = File.ReadAllText(fileIdName);
+    }
+
+    public void register()
     {
         try
         {
-            this.id = File.ReadAllText(fileIdName);
+            fillID();
         } 
         catch(FileNotFoundException ex)
         {
@@ -128,11 +145,10 @@ public class ApiProvider : IDisposable
     {
         (string r, string c) = makeCodeChallange();
         this.verCode = r;
-
         HttpResponseMessage response = client.GetAsync($"authorize" +
             $"?response_type=code" +
             $"&client_id={this.id}" +
-            $"&code_challange={c}" +
+            $"&code_challange={HttpUtility.UrlEncode(c)}" +
             $"&state={makeRandomString()}" +
             $"&app_token={makeRandomString()}" +
             $"&code_challange_method=S256" +
