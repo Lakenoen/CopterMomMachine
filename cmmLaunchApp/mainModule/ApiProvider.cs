@@ -22,15 +22,15 @@ public class ApiProvider : IDisposable
     private HttpListener server = new HttpListener();
     private HttpClient client;
     private bool isServerRun = false;
-    private readonly Uri baseAddr = new Uri("http://26.152.224.100:8000/");
+    private Uri baseAddr = new Uri("http://26.152.224.100:8000/");
     private string fileIdName = "Id.txt";
     private string id = "";
-    private readonly string reqId = "localhost:55080";
+    private string reqId = "localhost:55080";
     private string verCode = "";
     public string decryptKey { get; private set; } = "";
 
-    private const string servBaseAddr = "http://*:55080/";
-    private const string redirectUri = "http://localhost:55080/";
+    private string servBaseAddr = "http://*:55080/";
+    private static string redirectUri = "http://localhost:55080/";
 
     public static ApiProvider Instance
     {
@@ -44,12 +44,38 @@ public class ApiProvider : IDisposable
 
     public ApiProvider()
     {
+        initSettings();
         handler.AllowAutoRedirect = true;
         client = new HttpClient(handler);
         client.BaseAddress = baseAddr;
         client.Timeout = TimeSpan.FromSeconds(30);
         server.Prefixes.Add(servBaseAddr);
         server.Start();
+    }
+
+    private void initSettings()
+    {
+        string[] lines = File.ReadAllLines("Settings.txt", Encoding.UTF8);
+        foreach (string line in lines)
+        {
+            string[] parts = line.Split("=");
+            if (parts[0] == "localServerAddr")
+            {
+                this.servBaseAddr = parts[1];
+            }
+            else if (parts[0] == "redirectUri")
+            {
+                ApiProvider.redirectUri = parts[1];
+            }
+            else if (parts[0] == "reqId")
+            {
+                this.reqId = parts[1];
+            }
+            else if (parts[0] == "authServerAddr")
+            {
+                this.baseAddr = new Uri(parts[1]);
+            }
+        }
     }
 
     public async Task Listen()

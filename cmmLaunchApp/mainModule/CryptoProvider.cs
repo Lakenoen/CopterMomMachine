@@ -12,6 +12,7 @@ public static class CryptoProvider
 
     public static byte[] encrypt(byte[] key, byte[] msg)
     {
+        key = formatKey(key);
         byte[] res = new byte[msg.Length];
         msg.CopyTo(res, 0);
         Scrambler scrambler = new Scrambler(key);
@@ -19,7 +20,7 @@ public static class CryptoProvider
         return res;
     }
 
-    public static byte[] decrypt(byte[] key, byte[] msg)
+    private static byte[] formatKey(byte[] key)
     {
         if (key.Length < 32)
         {
@@ -27,6 +28,19 @@ public static class CryptoProvider
             key.CopyTo(temp, 0);
             key = temp;
         }
+        else if (key.Length > 32)
+        {
+            var temp = new byte[32];
+            for (int i = 0; i < 32; ++i)
+                temp[i] = key[i];
+            key = temp;
+        }
+        return key;
+    }
+
+    public static byte[] decrypt(byte[] key, byte[] msg)
+    {
+        key = formatKey(key);
         byte[] res = new byte[msg.Length];
         msg.CopyTo(res,0);
         Scrambler scrambler = new Scrambler(key);

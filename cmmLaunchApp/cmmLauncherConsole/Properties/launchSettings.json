@@ -2,6 +2,7 @@
   "profiles": {
     "cmmLauncherConsole": {
       "commandName": "Project",
+      "commandLineArgs": "run TestAppCpp.cmm",
       "nativeDebugging": true
     }
   }

@@ -9,7 +9,7 @@ static class Programm
     //TestAppCpp.exe
     //encrypt access_token TestAppCpp.exe TestAppCpp.cmm\
 
-    public static string encryptKey { get; private set; } = "";
+    public static string encryptKey { get; private set; } = "febfn2nInNN4tfRNIUF48u4hicndhcnds";
 
     public static void encryptForTest(string[] args)
     {
